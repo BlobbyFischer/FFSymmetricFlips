@@ -1,73 +1,66 @@
 #include <iostream>
 #include <string>
+#include <random>
+#include <filesystem>
 
 #include "F3Vec.h"
 #include "Symmetry336.h"
 #include "RankOneTensor.h"
 #include "Scheme.h"
 #include "FastRNG.h"
-#include "utils.h"
+#include "Utils.h"
 
-using SymA = SignFlipSymmetry<4, 0xFF00FF00FF00FF00ULL, 0xAAAAAAAAAAAAAAAAULL>;
-using SymB = SignFlipSymmetry<4, 0x0000000000000000ULL, 0xFF00FF00FF00FF00ULL>;
-using SymC = SignFlipSymmetry<4, 0xAAAAAAAAAAAAAAAAULL, 0x0000000000000000ULL>;
+// These are the exact symmetries Smirnov's <3,3,6> has
+using SymA = SignFlipSymmetry<4, 0x0000000000050502ULL, 0x0000000000060106ULL>;
+using SymB = SignFlipSymmetry<4, 0x0000000000281728ULL, 0x0000000000393906ULL>;
+using SymC = SignFlipSymmetry<4, 0x0000010601060606ULL, 0x0000020202050502ULL>;
 
 using MyScheme = Scheme<SymA, SymB, SymC>;
 
-void runRandomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIterations) {
-    FastRNG rng(1337, 4242);
-
-    std::cout << "Starting Random Walk. Initial rank: " << scheme.tensors.size() << "\n";
-
+void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIterations, int n, int m, int p) {
+    std::random_device rd;
+    FastRNG rng(rd(), rd());
+    std::string dirStr = "solutions/" + std::to_string(n) + "," + std::to_string(m) + "," + std::to_string(p); // this is where we will save the results
+    std::filesystem::create_directories(dirStr); // in case it doesn't exist already
     for (int step = 0; step < maxIterations; ++step) {
         scheme.generateFlipCandidates();
-
         if (scheme.flipCandidates.empty()) {
-            std::cout << "Walk terminated: Local Minimum.\n";
-            break;
+            break; // there are no flips left to be done
         }
-
-        uint64_t randomIndex = rng.randomInt(scheme.flipCandidates.size());
-        scheme.flip(scheme.flipCandidates[randomIndex], rng);
-
-        bool rankReduced = false;
+        uint64_t randIdx = rng.randomInt(scheme.flipCandidates.size());
+        scheme.flip(scheme.flipCandidates[randIdx], rng);
         for (int i = scheme.tensors.size() - 1; i >= 0; --i) {
             if (scheme.tensors[i].isZero()) {
                 scheme.tensors[i] = scheme.tensors.back();
                 scheme.tensors.pop_back();
-                rankReduced = true;
             }
         }
-
-        if (rankReduced) {
-            std::cout << "Step " << step << " | Rank reduced! New rank: " << scheme.tensors.size() << "\n";
-
-            // Output the state whenever we hit a reduction!
-            Utils::saveRaw(scheme, "current_state.txt");
-            Utils::saveReadable(scheme, "current_readable.txt");
-
-            /*if (scheme.tensors.size() <= 7) {
-                std::cout << "Target Rank found! Stopping.\n";
-                break;
-            }*/
-        }
     }
-
-    std::cout << "\n--- Verification ---\n";
-    if (Utils::verifyDecomposition(scheme, targetScheme)) {
-        std::cout << "[SUCCESS] The output scheme mathematically equals the target tensor!\n";
+    if (Utils::verifyDecomposition(scheme,targetScheme)) {
+        std::string filename = Utils::genSchemeHash(scheme);
+        Utils::saveRaw(scheme, dirStr + "/" + filename+".txt");
+        Utils::saveReadable(scheme, dirStr + "/" + filename+".exp");
+        std::cout << filename << ", " << scheme.tensors.size() << std::endl;
     } else {
-        std::cout << "[FAILED] The output scheme is broken. Math does not match.\n";
+        std::cout << "ERROR: input and output don't match";
     }
 }
 
 int main(int argc, char* argv[]) {
+    if (argc < 5) {
+        std::cout << "Usage: " << argv[0] << "<dim1> <dim2> <dim3> <path_length> [filename]" << std::endl;
+    }
+    int n = std::stoi(argv[1]);
+    int m = std::stoi(argv[2]);
+    int p = std::stoi(argv[3]);
+
+    int path_length = std::stoi(argv[4]);
+
     MyScheme targetScheme;
 
-    // Build the mathematical target <2,2,2> for verification purposes
-    for (int i = 0; i < 2; ++i) {
-        for (int j = 0; j < 2; ++j) {
-            for (int k = 0; k < 2; ++k) {
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            for (int k = 0; k < p; ++k) {
                 uint64_t a_mask = 1ULL << (8 * i + j);
                 uint64_t b_mask = 1ULL << (8 * j + k);
                 uint64_t c_mask = 1ULL << (8 * k + i);
@@ -79,17 +72,16 @@ int main(int argc, char* argv[]) {
     MyScheme activeScheme;
 
     // Check if a file was passed as an argument
-    if (argc > 1) {
-        std::string filename = argv[1];
+    if (argc > 5) {
+        std::string filename = argv[4];
         std::cout << "Loading state from: " << filename << "\n";
         Utils::loadRaw(activeScheme, filename);
     } else {
-        std::cout << "No file provided. Generating <2,2,2> target as starting state.\n";
+        std::cout << "Generating standard algorithm target as starting state.\n";
         // Deep copy the target into our active workspace
         activeScheme = targetScheme;
     }
 
-    runRandomWalk(activeScheme, targetScheme, 100000);
-
+    randomWalk(activeScheme, targetScheme, path_length, n, m, p);
     return 0;
 }
