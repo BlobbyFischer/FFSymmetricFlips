@@ -2,13 +2,16 @@ CXX = g++
 
 CXXFLAGS = -std=c++17 -O3 -march=native -Wall -Wextra
 
-all: flip extend
+all: flip reshape verify
 
 flip: main.cpp
 	$(CXX) $(CXXFLAGS) -o flip main.cpp
 
-extend: extend.cpp
-	$(CXX) $(CXXFLAGS) -o extend extend.cpp
+reshape: reshape.cpp
+	$(CXX) $(CXXFLAGS) -o reshape reshape.cpp
+
+verify: verify.cpp
+	$(CXX) $(CXXFLAGS) -o verify verify.cpp
 
 clean:
 	rm -f flip extend

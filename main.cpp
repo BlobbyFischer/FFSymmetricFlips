@@ -25,7 +25,7 @@ void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIteration
     scheme.generateFlipCandidates(); // ensure this is correct
     int best_rank = scheme.tensors.size();
     for (int step = 0; step < maxIterations; ++step) {
-        if (scheme.flipCandidates.empty() || (rng.randomInt(10000) == 0 && scheme.tensors.size() - best_rank < 4)) {
+        if (scheme.flipCandidates.empty() || (rng.randomInt(3000) == 0 && scheme.tensors.size() - best_rank < 4)) {
             scheme.plus(rng);
             scheme.generateFlipCandidates();
         }
@@ -46,16 +46,12 @@ void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIteration
             // did we find a new best?
             if (scheme.tensors.size() < best_rank) {
                 best_rank = scheme.tensors.size();
-                if (Utils::verifyDecomposition(scheme,targetScheme)) { // THIS WILL SLOW IT DOWN LOTS
-                    std::string filename = Utils::genSchemeHash(scheme);
-                    std::filesystem::create_directories(dirStr + "/rank" + std::to_string(best_rank));
-                    Utils::saveRaw(scheme, dirStr + "/rank" + std::to_string(best_rank) + "/" + filename +".txt");
-                    Utils::saveReadable(scheme, dirStr + "/rank" + std::to_string(best_rank) + "/" + filename+".exp");
-                    std::cout << filename << ", " << scheme.tensors.size() << std::endl;
-                }
-                else {
-                    std::cout << "ERROR " << step << std::endl;
-                }
+                // removed verification. Can verify using a separate function
+                std::string filename = Utils::genSchemeHash(scheme);
+                std::filesystem::create_directories(dirStr + "/rank" + std::to_string(best_rank));
+                Utils::saveRaw(scheme, dirStr + "/rank" + std::to_string(best_rank) + "/" + filename +".txt");
+                Utils::saveReadable(scheme, dirStr + "/rank" + std::to_string(best_rank) + "/" + filename+".exp");
+                std::cout << filename << ", " << scheme.tensors.size() << std::endl;
             }
         }
         else { // need to update flipCandidates
@@ -78,7 +74,7 @@ void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIteration
 
 int main(int argc, char* argv[]) {
     if (argc < 5) {
-        std::cout << "Usage: " << argv[0] << "<dim1> <dim2> <dim3> <path_length> [filename]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <dim1> <dim2> <dim3> <path_length> [filename]" << std::endl;
     }
     int n = std::stoi(argv[1]);
     int m = std::stoi(argv[2]);

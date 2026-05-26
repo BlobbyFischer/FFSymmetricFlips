@@ -189,8 +189,8 @@ public:
         F3Vec b1 = tensors[idx1].b;
         F3Vec c1 = tensors[idx1].c;
         F3Vec a2 = Sym1::apply(tensors[idx2].a, g);
-        F3Vec b2 = Sym1::apply(tensors[idx2].b, g);
-        F3Vec c2 = Sym1::apply(tensors[idx2].c, g);
+        F3Vec b2 = Sym2::apply(tensors[idx2].b, g);
+        F3Vec c2 = Sym3::apply(tensors[idx2].c, g);
         switch (rng.randomInt(3)) {
             case 0:
                 tensors[idx1] = TensorType(a1,b1+b2,c1);

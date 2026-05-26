@@ -3,6 +3,9 @@ cmake-build-release/
 CMake*
 .idea/
 flip
-extend
+reshape
+verify
 solutions/*
+!solutions/3,3,6/*
 *.o
+*.py
