@@ -4,4 +4,5 @@ CMake*
 .idea/
 flip
 extend
+solutions/*
 *.o
