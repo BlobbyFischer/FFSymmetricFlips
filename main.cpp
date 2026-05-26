@@ -19,13 +19,15 @@ using MyScheme = Scheme<SymA, SymB, SymC>;
 
 void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIterations, int n, int m, int p) {
     std::random_device rd;
-    FastRNG rng(rd(), rd());
+    FastRNG rng(rd(), rd()); // only use the slow randomness here to generate random seeds for the fast prng
     std::string dirStr = "solutions/" + std::to_string(n) + "," + std::to_string(m) + "," + std::to_string(p); // this is where we will save the results
     std::filesystem::create_directories(dirStr); // in case it doesn't exist already
     scheme.generateFlipCandidates(); // ensure this is correct
+    int best_rank = scheme.tensors.size();
     for (int step = 0; step < maxIterations; ++step) {
-        if (scheme.flipCandidates.empty()) {
-            break; // there are no flips left to be done
+        if (scheme.flipCandidates.empty() || (rng.randomInt(10000) == 0 && scheme.tensors.size() - best_rank < 4)) {
+            scheme.plus(rng);
+            scheme.generateFlipCandidates();
         }
         uint64_t randIdx = rng.randomInt(scheme.flipCandidates.size());
         FlipCandidate chosenFlip = scheme.flipCandidates[randIdx];
@@ -41,11 +43,28 @@ void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIteration
                 }
             }
             scheme.generateFlipCandidates();
+            // did we find a new best?
+            if (scheme.tensors.size() < best_rank) {
+                best_rank = scheme.tensors.size();
+                if (Utils::verifyDecomposition(scheme,targetScheme)) { // THIS WILL SLOW IT DOWN LOTS
+                    std::string filename = Utils::genSchemeHash(scheme);
+                    std::filesystem::create_directories(dirStr + "/rank" + std::to_string(best_rank));
+                    Utils::saveRaw(scheme, dirStr + "/rank" + std::to_string(best_rank) + "/" + filename +".txt");
+                    Utils::saveReadable(scheme, dirStr + "/rank" + std::to_string(best_rank) + "/" + filename+".exp");
+                    std::cout << filename << ", " << scheme.tensors.size() << std::endl;
+                }
+                else {
+                    std::cout << "ERROR " << step << std::endl;
+                }
+            }
         }
         else { // need to update flipCandidates
             // remove all outdated flips involving idx1 and idx2
             for (int i = scheme.flipCandidates.size() - 1; i >= 0; --i) {
-                if (scheme.flipCandidates[i].index1 == idx1 || scheme.flipCandidates[i].index2 == idx2) {
+                if (scheme.flipCandidates[i].index1 == idx1 ||
+                    scheme.flipCandidates[i].index2 == idx1 ||
+                    scheme.flipCandidates[i].index1 == idx2 ||
+                    scheme.flipCandidates[i].index2 == idx2) {
                     scheme.flipCandidates[i] = scheme.flipCandidates.back();
                     scheme.flipCandidates.pop_back();
                 }
@@ -54,14 +73,6 @@ void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIteration
             scheme.generateFlipCandidatesForTensor(idx1);
             scheme.generateFlipCandidatesForTensor(idx2,idx1);
         }
-    }
-    if (Utils::verifyDecomposition(scheme,targetScheme)) {
-        std::string filename = Utils::genSchemeHash(scheme);
-        Utils::saveRaw(scheme, dirStr + "/" + filename+".txt");
-        Utils::saveReadable(scheme, dirStr + "/" + filename+".exp");
-        std::cout << filename << ", " << scheme.tensors.size() << std::endl;
-    } else {
-        std::cout << "ERROR: input and output don't match";
     }
 }
 
@@ -92,7 +103,7 @@ int main(int argc, char* argv[]) {
 
     // Check if a file was passed as an argument
     if (argc > 5) {
-        std::string filename = argv[4];
+        std::string filename = argv[5];
         std::cout << "Loading state from: " << filename << "\n";
         Utils::loadRaw(activeScheme, filename);
     } else {

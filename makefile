@@ -1,14 +1,14 @@
 CXX = g++
-# -O3 maximizes speed. -march=native allows hardware-specific bitwise ops.
+
 CXXFLAGS = -std=c++17 -O3 -march=native -Wall -Wextra
 
-TARGET = flip
-SRCS = main.cpp
+all: flip extend
 
-all: $(TARGET)
+flip: main.cpp
+	$(CXX) $(CXXFLAGS) -o flip main.cpp
 
-$(TARGET): $(SRCS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRCS)
+extend: extend.cpp
+	$(CXX) $(CXXFLAGS) -o extend extend.cpp
 
 clean:
-	rm -f $(TARGET)
+	rm -f flip extend

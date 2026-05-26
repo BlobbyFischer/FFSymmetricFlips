@@ -9,4 +9,5 @@ add_executable(FFSymmetricFlips main.cpp
         RankOneTensor.h
         Scheme.h
         FastRNG.h
-        Utils.h)
+        Utils.h
+        extend.cpp)

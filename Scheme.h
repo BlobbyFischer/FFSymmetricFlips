@@ -178,6 +178,37 @@ public:
             }
         }
     }
+    void plus(FastRNG& rng) {
+        if (tensors.size() < 2) return;
+        // choose the two indices
+        uint16_t idx1 = rng.randomInt(tensors.size());
+        uint16_t idx2 = rng.randomInt(tensors.size());
+        while (idx1 == idx2) idx2 = rng.randomInt(tensors.size()); // make sure they are actually different
+        uint8_t g = rng.randomInt(Sym1::ORBIT_SIZE); // choose a random group element
+        F3Vec a1 = tensors[idx1].a;
+        F3Vec b1 = tensors[idx1].b;
+        F3Vec c1 = tensors[idx1].c;
+        F3Vec a2 = Sym1::apply(tensors[idx2].a, g);
+        F3Vec b2 = Sym1::apply(tensors[idx2].b, g);
+        F3Vec c2 = Sym1::apply(tensors[idx2].c, g);
+        switch (rng.randomInt(3)) {
+            case 0:
+                tensors[idx1] = TensorType(a1,b1+b2,c1);
+                tensors[idx2] = TensorType(a1,b2,c2-c1);
+                tensors.emplace_back(a2-a1,b2,c2);
+                break;
+            case 1:
+                tensors[idx1] = TensorType(a1,b1,c1+c2);
+                tensors[idx2] = TensorType(a2-a1,b1,c2);
+                tensors.emplace_back(a2,b2-b1,c2);
+                break;
+            case 2:
+                tensors[idx1] = TensorType(a1+a2,b1,c1);
+                tensors[idx2] = TensorType(a2,b2-b1,c1);
+                tensors.emplace_back(a2,b2,c2-c1);
+                break;
+        }
+    }
 };
 
 
