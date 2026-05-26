@@ -74,7 +74,7 @@ public:
         }
     }
 
-    void generateFlipCandidatesForTensor(uint16_t targetIndex) {
+    void generateFlipCandidatesForTensor(uint16_t targetIndex, uint16_t skipIndex = 0xFFFF) {
         const auto& t1 = tensors[targetIndex];
         auto t1_orbit = t1.generateOrbit();
         uint64_t supp_t1_a = t1.a.support();
@@ -82,7 +82,7 @@ public:
         uint64_t supp_t1_c = t1.c.support();
 
         for (uint16_t i = 0; i < tensors.size(); i++) {
-            if (i == targetIndex) continue;
+            if (i == targetIndex || i == skipIndex) continue;
             const auto& t2 = tensors[i];
             bool checkA = (supp_t1_a == t2.a.support());
             bool checkB = (supp_t1_b == t2.b.support());

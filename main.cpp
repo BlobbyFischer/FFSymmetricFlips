@@ -22,18 +22,37 @@ void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIteration
     FastRNG rng(rd(), rd());
     std::string dirStr = "solutions/" + std::to_string(n) + "," + std::to_string(m) + "," + std::to_string(p); // this is where we will save the results
     std::filesystem::create_directories(dirStr); // in case it doesn't exist already
+    scheme.generateFlipCandidates(); // ensure this is correct
     for (int step = 0; step < maxIterations; ++step) {
-        scheme.generateFlipCandidates();
         if (scheme.flipCandidates.empty()) {
             break; // there are no flips left to be done
         }
         uint64_t randIdx = rng.randomInt(scheme.flipCandidates.size());
-        scheme.flip(scheme.flipCandidates[randIdx], rng);
-        for (int i = scheme.tensors.size() - 1; i >= 0; --i) {
-            if (scheme.tensors[i].isZero()) {
-                scheme.tensors[i] = scheme.tensors.back();
-                scheme.tensors.pop_back();
+        FlipCandidate chosenFlip = scheme.flipCandidates[randIdx];
+        scheme.flip(chosenFlip, rng);
+        uint16_t idx1 = chosenFlip.index1;
+        uint16_t idx2 = chosenFlip.index2;
+        if (scheme.tensors[idx1].isZero() || scheme.tensors[idx2].isZero()) {
+            // this should happen rarely, so we can afford to be a little slow here
+            for (int i = scheme.tensors.size() - 1; i >= 0; --i) {
+                if (scheme.tensors[i].isZero()) {
+                    scheme.tensors[i] = scheme.tensors.back();
+                    scheme.tensors.pop_back();
+                }
             }
+            scheme.generateFlipCandidates();
+        }
+        else { // need to update flipCandidates
+            // remove all outdated flips involving idx1 and idx2
+            for (int i = scheme.flipCandidates.size() - 1; i >= 0; --i) {
+                if (scheme.flipCandidates[i].index1 == idx1 || scheme.flipCandidates[i].index2 == idx2) {
+                    scheme.flipCandidates[i] = scheme.flipCandidates.back();
+                    scheme.flipCandidates.pop_back();
+                }
+            }
+            // add all updated flips involving idx1 and idx2
+            scheme.generateFlipCandidatesForTensor(idx1);
+            scheme.generateFlipCandidatesForTensor(idx2,idx1);
         }
     }
     if (Utils::verifyDecomposition(scheme,targetScheme)) {
