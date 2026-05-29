@@ -26,7 +26,10 @@ void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIteration
     int best_rank = scheme.tensors.size();
     for (int step = 0; step < maxIterations; ++step) {
         if (scheme.flipCandidates.empty() || (rng.randomInt(3000) == 0 && scheme.tensors.size() - best_rank < 4)) {
-            scheme.plus(rng);
+            for (int i = 0; i < rng.randomInt(3) + 1; ++i) {
+                // loop so that we can increase by more at a time, hopefully avoiding deeper local minima
+                scheme.plus(rng);
+            }
             scheme.generateFlipCandidates();
         }
         uint64_t randIdx = rng.randomInt(scheme.flipCandidates.size());

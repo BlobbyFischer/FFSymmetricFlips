@@ -6,6 +6,7 @@ flip
 reshape
 verify
 solutions/*
-!solutions/3,3,6/*
+!solutions/3,3,6/
+!solutions/3,3,6/**
 *.o
 *.py
