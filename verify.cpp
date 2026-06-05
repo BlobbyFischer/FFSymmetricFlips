@@ -13,9 +13,9 @@
 #include "Utils.h"
 
 // These are the exact symmetries Smirnov's <3,3,6> has
-using SymA = SignFlipSymmetry<4, 0x0000000000050502ULL, 0x0000000000060106ULL>;
-using SymB = SignFlipSymmetry<4, 0x0000000000281728ULL, 0x0000000000393906ULL>;
-using SymC = SignFlipSymmetry<4, 0x0000010601060606ULL, 0x0000020202050502ULL>;
+using SymA = SignFlipSymmetry<4, 0x202020202fdfd02, 0x60606060606f906>;
+using SymB = SignFlipSymmetry<4, 0x282828282828d728, 0x606060606f9f906>;
+using SymC = SignFlipSymmetry<4, 0x606f906f9060606, 0x202020202fdfd02>;
 
 using MyScheme = Scheme<SymA, SymB, SymC>;
 

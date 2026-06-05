@@ -10,3 +10,4 @@ solutions/*
 !solutions/3,3,6/**
 *.o
 *.py
+!generateMasks.py
