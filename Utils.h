@@ -79,7 +79,7 @@ namespace Utils {
                 const int row = (i / 8) + 1;
                 const int col = (i % 8) + 1;
 
-                out << (val == 1 ? (first ? "" : "+") : "-") << basisName << row << col;
+                out << (val == 1 ? (first ? " " : "+") : "-") << basisName << row << col;
                 first = false;
             }
         }

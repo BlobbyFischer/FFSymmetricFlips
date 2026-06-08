@@ -17,16 +17,16 @@ using SymC = SignFlipSymmetry<4, 0x606f906f9060606, 0x202020202fdfd02>;
 
 using MyScheme = Scheme<SymA, SymB, SymC>;
 
-void randomWalk(MyScheme& scheme, const MyScheme& targetScheme, int maxIterations, int n, int m, int p) {
+void randomWalk(MyScheme& scheme, int maxIterations, int n, int m, int p) {
     std::random_device rd;
     FastRNG rng(rd(), rd()); // only use the slow randomness here to generate random seeds for the fast prng
     std::string dirStr = "solutions/" + std::to_string(n) + "," + std::to_string(m) + "," + std::to_string(p); // this is where we will save the results
     std::filesystem::create_directories(dirStr); // in case it doesn't exist already
     scheme.generateFlipCandidates(); // ensure this is correct
-    int best_rank = scheme.tensors.size();
+    uint64_t best_rank = scheme.tensors.size(); // perhaps this is too big?
     for (int step = 0; step < maxIterations; ++step) {
         if (scheme.flipCandidates.empty() || (rng.randomInt(3000) == 0 && scheme.tensors.size() - best_rank < 4)) {
-            for (int i = 0; i < rng.randomInt(3) + 1; ++i) {
+            for (uint64_t i = 0; i < rng.randomInt(3) + 1; ++i) {
                 // loop so that we can increase by more at a time, hopefully avoiding deeper local minima
                 scheme.plus(rng);
             }
@@ -111,6 +111,6 @@ int main(int argc, char* argv[]) {
         activeScheme = targetScheme;
     }
 
-    randomWalk(activeScheme, targetScheme, path_length, n, m, p);
+    randomWalk(activeScheme, path_length, n, m, p);
     return 0;
 }
