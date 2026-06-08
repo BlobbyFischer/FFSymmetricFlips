@@ -73,7 +73,6 @@ namespace Utils {
         out << "(";
         for (int i = 0; i < 64; ++i) {
             if (int val = v.get(i)) {
-                if (!first) out << " ";
 
                 // Calculate 1-indexed matrix coordinates (1 to 8)
                 const int row = (i / 8) + 1;
