@@ -9,8 +9,8 @@ namespace Utils {
 
     // Projects the entire Scheme into a 64x64x64 tensor. Useful for checking correctness
     template<typename SchemeType>
-    std::vector<int8_t> buildDenseTensor(const SchemeType& scheme) {
-        std::vector<int8_t> dense(64 * 64 * 64, 0);
+    std::vector<int> buildDenseTensor(const SchemeType& scheme) {
+        std::vector<int> dense(64 * 64 * 64, 0);
         for (const auto& t : scheme.tensors) {
             for (const auto& ot : t.generateOrbit()) {
                 for (int i = 0; i < 64; ++i) {

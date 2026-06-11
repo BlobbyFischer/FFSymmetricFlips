@@ -35,8 +35,18 @@ void randomWalk(MyScheme& scheme, int maxIterations, int n, int m, int p) {
         uint64_t randIdx = rng.randomInt(scheme.flipCandidates.size());
         FlipCandidate chosenFlip = scheme.flipCandidates[randIdx];
         while (!scheme.flip(chosenFlip, rng)) { // keep trying to flip until we successfully do one
+            scheme.flipCandidates[randIdx] = scheme.flipCandidates.back();
+            scheme.flipCandidates.pop_back();
+            if (scheme.flipCandidates.empty()) break;
             randIdx = rng.randomInt(scheme.flipCandidates.size());
             chosenFlip = scheme.flipCandidates[randIdx];
+        }
+        if (scheme.flipCandidates.empty()) {
+            for (uint64_t i = 0; i < rng.randomInt(3) + 1; ++i) {
+                scheme.plus(rng);
+            }
+            scheme.generateFlipCandidates();
+            continue;
         }
         uint16_t idx1 = chosenFlip.index1;
         uint16_t idx2 = chosenFlip.index2;

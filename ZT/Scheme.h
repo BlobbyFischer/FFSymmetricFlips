@@ -200,16 +200,19 @@ public:
         ZTVec c2 = Sym3::apply(tensors[idx2].c, g);
         switch (rng.randomInt(3)) {
             case 0:
+                if (!b1.canAdd(b2) || !c2.canSubtract(c1) || a2.canSubtract(a1)) return;
                 tensors[idx1] = TensorType(a1,b1+b2,c1);
                 tensors[idx2] = TensorType(a1,b2,c2-c1);
                 tensors.emplace_back(a2-a1,b2,c2);
                 break;
             case 1:
+                if (!c1.canAdd(c2) || !a2.canSubtract(a1) || !b2.canSubtract(b1)) return;
                 tensors[idx1] = TensorType(a1,b1,c1+c2);
                 tensors[idx2] = TensorType(a2-a1,b1,c2);
                 tensors.emplace_back(a2,b2-b1,c2);
                 break;
             case 2:
+                if (!a1.canAdd(a2) || !b2.canSubtract(b1) || c2.canSubtract(c1)) return;
                 tensors[idx1] = TensorType(a1+a2,b1,c1);
                 tensors[idx2] = TensorType(a2,b2-b1,c1);
                 tensors.emplace_back(a2,b2,c2-c1);

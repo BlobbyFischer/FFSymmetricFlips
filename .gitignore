@@ -5,9 +5,10 @@ CMake*
 flip
 reshape
 verify
-solutions/*
-!solutions/3,3,6/
-!solutions/3,3,6/**
+F3/solutions/*
+!F3/solutions/3,3,6/
+!F3/solutions/3,3,6/**
+ZT/solutions/*
 *.o
 *.py
 !generateMasks.py
