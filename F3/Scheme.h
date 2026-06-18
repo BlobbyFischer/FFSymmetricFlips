@@ -25,8 +25,6 @@ public:
     std::vector<TensorType> tensors;
     std::vector<FlipCandidate> flipCandidates;
 
-    // CONSTRUCTORS
-
     void generateFlipCandidates() {
         flipCandidates.clear();
         for (uint16_t t1_index=0; t1_index<tensors.size(); t1_index++) {
@@ -208,6 +206,93 @@ public:
                 tensors.emplace_back(a2,b2,c2-c1);
                 break;
         }
+    }
+
+    // Now we want to try to add "hidden flip" functionality
+
+    bool isOrbitZero(const F3Vec& a, const F3Vec& b, const F3Vec& c) const { // perhaps there is a better way to do this
+        F3Vec a1 = Sym1::apply(a, 1); F3Vec b1 = Sym2::apply(b, 1); F3Vec c1 = Sym3::apply(c, 1);
+        F3Vec a2 = Sym1::apply(a, 2); F3Vec b2 = Sym2::apply(b, 2); F3Vec c2 = Sym3::apply(c, 2);
+        F3Vec a3 = Sym1::apply(a, 3); F3Vec b3 = Sym2::apply(b, 3); F3Vec c3 = Sym3::apply(c, 3);
+        uint64_t supp_a = a.support();
+        while (supp_a) {
+            int i = __builtin_ctzll(supp_a);
+            supp_a &= supp_a - 1; // This just clears the lowest non-zero bit
+            int val_a0 = a.get(i); int val_a1 = a1.get(i); int val_a2 = a2.get(i); int val_a3 = a3.get(i);
+            uint64_t supp_b = b.support();
+            while (supp_b) {
+                int j = __builtin_ctzll(supp_b);
+                supp_b &= supp_b - 1;
+                int val_b0 = b.get(j); int val_b1 = b1.get(j); int val_b2 = b2.get(j); int val_b3 = b3.get(j);
+                uint64_t supp_c = c.support();
+                while (supp_c) {
+                    int k = __builtin_ctzll(supp_c);
+                    supp_c &= supp_c - 1;
+                    int val_c0 = c.get(k);
+                    int sum = val_a0 * val_b0 * val_c0 +
+                              val_a1 * val_b1 * c1.get(k) +
+                              val_a2 * val_b2 * c2.get(k) +
+                              val_a3 * val_b3 * c3.get(k);
+
+                    if (sum % 3 != 0) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    bool findAndApplyMutatedFlip(FastRNG& rng) {
+        struct HiddenFlip {
+            uint16_t idx1; uint16_t idx2;
+            uint8_t axis; uint8_t g;
+            bool isNegEqual;
+            F3Vec delta;
+        };
+        std::vector<HiddenFlip> hiddenFlips;
+        for (uint16_t i = 0; i < tensors.size(); ++i) {
+            const auto& t1 = tensors[i];
+            for (uint16_t j = 0; j < tensors.size(); ++j) {
+                if (i == j) continue;
+                const auto& t2 = tensors[j];
+                for (uint8_t g = 0; g < Sym1::ORBIT_SIZE; ++g) {
+                    F3Vec g_t2_a = Sym1::apply(t2.a, g);
+                    F3Vec neg_g_t2_a = F3Vec(g_t2_a.minus, g_t2_a.plus); // Safe unary minus
+                    F3Vec delta_a_pos = g_t2_a - t1.a;
+                    F3Vec delta_a_neg = neg_g_t2_a - t1.a;
+                    if (delta_a_pos.support() != 0 && isOrbitZero(delta_a_pos, t1.b, t1.c)) {
+                        hiddenFlips.push_back({i, j, 0, g, false, delta_a_pos});
+                    } else if (delta_a_neg.support() != 0 && isOrbitZero(delta_a_neg, t1.b, t1.c)) {
+                        hiddenFlips.push_back({i, j, 0, g, true, delta_a_neg});
+                    }
+                    F3Vec g_t2_b = Sym2::apply(t2.b, g);
+                    F3Vec neg_g_t2_b = F3Vec(g_t2_b.minus, g_t2_b.plus);
+                    F3Vec delta_b_pos = g_t2_b - t1.b;
+                    F3Vec delta_b_neg = neg_g_t2_b - t1.b;
+                    if (delta_b_pos.support() != 0 && isOrbitZero(t1.a, delta_b_pos, t1.c)) {
+                        hiddenFlips.push_back({i, j, 1, g, false, delta_b_pos});
+                    } else if (delta_b_neg.support() != 0 && isOrbitZero(t1.a, delta_b_neg, t1.c)) {
+                        hiddenFlips.push_back({i, j, 1, g, true, delta_b_neg});
+                    }
+                    F3Vec g_t2_c = Sym3::apply(t2.c, g);
+                    F3Vec neg_g_t2_c = F3Vec(g_t2_c.minus, g_t2_c.plus);
+                    F3Vec delta_c_pos = g_t2_c - t1.c;
+                    F3Vec delta_c_neg = neg_g_t2_c - t1.c;
+                    if (delta_c_pos.support() != 0 && isOrbitZero(t1.a, t1.b, delta_c_pos)) {
+                        hiddenFlips.push_back({i, j, 2, g, false, delta_c_pos});
+                    } else if (delta_c_neg.support() != 0 && isOrbitZero(t1.a, t1.b, delta_c_neg)) {
+                        hiddenFlips.push_back({i, j, 2, g, true, delta_c_neg});
+                    }
+                }
+            }
+        }
+        if (hiddenFlips.empty()) return false;
+        auto chosen = hiddenFlips[rng.randomInt(hiddenFlips.size())];
+        if (chosen.axis == 0) tensors[chosen.idx1].a += chosen.delta;
+        else if (chosen.axis == 1) tensors[chosen.idx1].b += chosen.delta;
+        else if (chosen.axis == 2) tensors[chosen.idx1].c += chosen.delta;
+        FlipCandidate f = {chosen.idx1, chosen.idx2, chosen.axis, chosen.g, chosen.isNegEqual};
+        this->flip(f, rng);
+        return true;
     }
 };
 

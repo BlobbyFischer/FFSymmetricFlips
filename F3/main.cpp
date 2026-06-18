@@ -25,7 +25,13 @@ void randomWalk(MyScheme& scheme, int maxIterations, int n, int m, int p) {
     scheme.generateFlipCandidates(); // ensure this is correct
     uint64_t best_rank = scheme.tensors.size(); // perhaps this is too big?
     for (int step = 0; step < maxIterations; ++step) {
-        if (scheme.flipCandidates.empty() || (rng.randomInt(3000) == 0 && scheme.tensors.size() - best_rank < 4)) {
+        if (rng.randomInt(3000) == 0) { // every so often try to do a hidden flip
+            if (scheme.findAndApplyMutatedFlip(rng)) {
+                scheme.generateFlipCandidates();
+            }
+        }
+        if (scheme.flipCandidates.empty() || (rng.randomInt(10000) == 0 && scheme.tensors.size() - best_rank < 4)) {
+            scheme.findAndApplyMutatedFlip(rng);
             for (uint64_t i = 0; i < rng.randomInt(3) + 1; ++i) {
                 // loop so that we can increase by more at a time, hopefully avoiding deeper local minima
                 scheme.plus(rng);

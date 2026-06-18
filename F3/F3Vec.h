@@ -59,10 +59,10 @@ public:
         return plus != other.plus || minus != other.minus;
     }
 
-    [[nodiscard]] uint8_t get(int index) const {
+    [[nodiscard]] int8_t get(int index) const {
         if (index < 0 || index >= 64) throw std::out_of_range("index out of range");
         if ((plus >> index) & 1ULL) return 1;
-        if ((minus >> index) & 1ULL) return 2;
+        if ((minus >> index) & 1ULL) return -1;
         return 0;
     }
 
