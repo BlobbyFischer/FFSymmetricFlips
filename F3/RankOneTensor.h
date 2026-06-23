@@ -29,7 +29,20 @@ public:
     }
 
     [[nodiscard]] bool isZero() const {
-        return a.support() == 0 || b.support() == 0 || c.support() == 0;
+        if (a.support() == 0) return true;
+        if (b.support() == 0) return true;
+        if (c.support() == 0) return true;
+        return false;
+    }
+
+    [[nodiscard]] bool isGhost() const { // checks if the orbit is zero, not just one of the rank one tensors is zero
+        uint8_t fp_a = Sym1::get_footprint(a.support());
+        uint8_t fp_b = Sym2::get_footprint(b.support());
+        uint8_t fp_c = Sym3::get_footprint(c.support());
+        if ((a.support() & ~Sym1::get_kernel_mask(fp_b,fp_c)) == 0) return true;
+        if ((b.support() & ~Sym2::get_kernel_mask(fp_a,fp_c)) == 0) return true;
+        if ((c.support() & ~Sym3::get_kernel_mask(fp_a,fp_b)) == 0) return true;
+        return false;
     }
 };
 

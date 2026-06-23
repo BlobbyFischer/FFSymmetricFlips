@@ -26,12 +26,12 @@ void randomWalk(MyScheme& scheme, int maxIterations, int n, int m, int p) {
     uint64_t best_rank = scheme.tensors.size(); // perhaps this is too big?
     for (int step = 0; step < maxIterations; ++step) {
         if (rng.randomInt(3000) == 0) { // every so often try to do a hidden flip
-            if (scheme.findAndApplyMutatedFlip(rng)) {
+            if (scheme.findAndApplyHiddenFlip(rng)) {
                 scheme.generateFlipCandidates();
             }
         }
         if (scheme.flipCandidates.empty() || (rng.randomInt(10000) == 0 && scheme.tensors.size() - best_rank < 4)) {
-            scheme.findAndApplyMutatedFlip(rng);
+            scheme.findAndApplyHiddenFlip(rng); // in case this is the reason it was stuck
             for (uint64_t i = 0; i < rng.randomInt(3) + 1; ++i) {
                 // loop so that we can increase by more at a time, hopefully avoiding deeper local minima
                 scheme.plus(rng);
@@ -43,10 +43,10 @@ void randomWalk(MyScheme& scheme, int maxIterations, int n, int m, int p) {
         scheme.flip(chosenFlip, rng);
         uint16_t idx1 = chosenFlip.index1;
         uint16_t idx2 = chosenFlip.index2;
-        if (scheme.tensors[idx1].isZero() || scheme.tensors[idx2].isZero()) {
+        if (scheme.tensors[idx1].isZero() || scheme.tensors[idx2].isZero() || scheme.tensors[idx1].isGhost() || scheme.tensors[idx2].isGhost()) {
             // this should happen rarely, so we can afford to be a little slow here
             for (int i = scheme.tensors.size() - 1; i >= 0; --i) {
-                if (scheme.tensors[i].isZero()) {
+                if (scheme.tensors[i].isZero() || scheme.tensors[i].isGhost()) {
                     scheme.tensors[i] = scheme.tensors.back();
                     scheme.tensors.pop_back();
                 }

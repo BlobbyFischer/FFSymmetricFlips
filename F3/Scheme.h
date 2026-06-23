@@ -27,44 +27,89 @@ public:
 
     void generateFlipCandidates() {
         flipCandidates.clear();
-        for (uint16_t t1_index=0; t1_index<tensors.size(); t1_index++) {
+        for (uint16_t t1_index = 0; t1_index < tensors.size(); t1_index++) {
             const auto& t1 = tensors[t1_index];
             auto t1_orbit = t1.generateOrbit();
             uint64_t supp_t1_a = t1.a.support();
             uint64_t supp_t1_b = t1.b.support();
             uint64_t supp_t1_c = t1.c.support();
-
+            uint64_t kernel_t1_a = Sym1::get_kernel_mask(Sym2::get_footprint(supp_t1_b), Sym3::get_footprint(supp_t1_c));
+            uint64_t kernel_t1_b = Sym2::get_kernel_mask(Sym1::get_footprint(supp_t1_a), Sym3::get_footprint(supp_t1_c));
+            uint64_t kernel_t1_c = Sym3::get_kernel_mask(Sym1::get_footprint(supp_t1_a), Sym2::get_footprint(supp_t1_b));
             for (uint16_t i = t1_index + 1; i < tensors.size(); i++) {
                 const auto& t2 = tensors[i];
-                bool checkA = (supp_t1_a == t2.a.support());
-                bool checkB = (supp_t1_b == t2.b.support());
-                bool checkC = (supp_t1_c == t2.c.support());
-                if (!checkA && !checkB && !checkC) continue;
-                if (checkA) {
+                uint64_t supp_t2_a = t2.a.support();
+                uint64_t supp_t2_b = t2.b.support();
+                uint64_t supp_t2_c = t2.c.support();
+                uint64_t kernel_t2_a = Sym1::get_kernel_mask(Sym2::get_footprint(supp_t2_b), Sym3::get_footprint(supp_t2_c));
+                uint64_t kernel_t2_b = Sym2::get_kernel_mask(Sym1::get_footprint(supp_t2_a), Sym3::get_footprint(supp_t2_c));
+                uint64_t kernel_t2_c = Sym3::get_kernel_mask(Sym1::get_footprint(supp_t2_a), Sym2::get_footprint(supp_t2_b));
+                bool checkA1 = (((supp_t1_a ^ supp_t2_a) & ~kernel_t1_a) == 0); // t1 absorbs the ghost
+                bool checkA2 = (((supp_t1_a ^ supp_t2_a) & ~kernel_t2_a) == 0); // t2 absorbs the ghost
+                bool checkB1 = (((supp_t1_b ^ supp_t2_b) & ~kernel_t1_b) == 0);
+                bool checkB2 = (((supp_t1_b ^ supp_t2_b) & ~kernel_t2_b) == 0);
+                bool checkC1 = (((supp_t1_c ^ supp_t2_c) & ~kernel_t1_c) == 0);
+                bool checkC2 = (((supp_t1_c ^ supp_t2_c) & ~kernel_t2_c) == 0);
+                if (!checkA1 && !checkA2 && !checkB1 && !checkB2 && !checkC1 && !checkC2) continue;
+                if (checkA1 || checkA2) {
                     for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
-                        const auto& mapped_t1 = t1_orbit[g];
-                        if (mapped_t1.a == t2.a) {
-                            flipCandidates.push_back({i,t1_index,0,g,false});
-                        } else if (mapped_t1.a.negEqual(t2.a)) {
-                            flipCandidates.push_back({i,t1_index,0,g,true});
+                        if (checkA1) {
+                            const auto& mapped_t1 = t1_orbit[g];
+                            if (mapped_t1.a.isKernelEqual(t2.a, kernel_t1_a)) {
+                                flipCandidates.push_back({i, t1_index, 0, g, false});
+                            } else if (mapped_t1.a.isKernelNegEqual(t2.a, kernel_t1_a)) {
+                                flipCandidates.push_back({i, t1_index, 0, g, true});
+                            }
+                        }
+                        if (checkA2) {
+                            const auto& mapped_t2_a = Sym1::apply(t2.a, g);
+                            if (mapped_t2_a.isKernelEqual(t1.a, kernel_t2_a)) {
+                                flipCandidates.push_back({t1_index, i, 0, g, false});
+                            } else if (mapped_t2_a.isKernelNegEqual(t1.a, kernel_t2_a)) {
+                                flipCandidates.push_back({t1_index, i, 0, g, true});
+                            }
                         }
                     }
-                }if (checkB) {
+                }
+
+                if (checkB1 || checkB2) {
                     for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
-                        const auto& mapped_t1 = t1_orbit[g];
-                        if (mapped_t1.b == t2.b) {
-                            flipCandidates.push_back({i,t1_index,1,g,false});
-                        } else if (mapped_t1.b.negEqual(t2.b)) {
-                            flipCandidates.push_back({i,t1_index,1,g,true});
+                        if (checkB1) {
+                            const auto& mapped_t1 = t1_orbit[g];
+                            if (mapped_t1.b.isKernelEqual(t2.b, kernel_t1_b)) {
+                                flipCandidates.push_back({i, t1_index, 1, g, false});
+                            } else if (mapped_t1.b.isKernelNegEqual(t2.b, kernel_t1_b)) {
+                                flipCandidates.push_back({i, t1_index, 1, g, true});
+                            }
+                        }
+                        if (checkB2) {
+                            const auto& mapped_t2_b = Sym2::apply(t2.b, g);
+                            if (mapped_t2_b.isKernelEqual(t1.b, kernel_t2_b)) {
+                                flipCandidates.push_back({t1_index, i, 1, g, false});
+                            } else if (mapped_t2_b.isKernelNegEqual(t1.b, kernel_t2_b)) {
+                                flipCandidates.push_back({t1_index, i, 1, g, true});
+                            }
                         }
                     }
-                }if (checkC) {
+                }
+
+                if (checkC1 || checkC2) {
                     for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
-                        const auto& mapped_t1 = t1_orbit[g];
-                        if (mapped_t1.c == t2.c) {
-                            flipCandidates.push_back({i,t1_index,2,g,false});
-                        } else if (mapped_t1.c.negEqual(t2.c)) {
-                            flipCandidates.push_back({i,t1_index,2,g,true});
+                        if (checkC1) {
+                            const auto& mapped_t1 = t1_orbit[g];
+                            if (mapped_t1.c.isKernelEqual(t2.c, kernel_t1_c)) {
+                                flipCandidates.push_back({i, t1_index, 2, g, false});
+                            } else if (mapped_t1.c.isKernelNegEqual(t2.c, kernel_t1_c)) {
+                                flipCandidates.push_back({i, t1_index, 2, g, true});
+                            }
+                        }
+                        if (checkC2) {
+                            const auto& mapped_t2_c = Sym3::apply(t2.c, g);
+                            if (mapped_t2_c.isKernelEqual(t1.c, kernel_t2_c)) {
+                                flipCandidates.push_back({t1_index, i, 2, g, false});
+                            } else if (mapped_t2_c.isKernelNegEqual(t1.c, kernel_t2_c)) {
+                                flipCandidates.push_back({t1_index, i, 2, g, true});
+                            }
                         }
                     }
                 }
@@ -73,54 +118,97 @@ public:
     }
 
     void generateFlipCandidatesForTensor(uint16_t targetIndex, uint16_t skipIndex = 0xFFFF) {
-        const auto& t1 = tensors[targetIndex];
-        auto t1_orbit = t1.generateOrbit();
-        uint64_t supp_t1_a = t1.a.support();
-        uint64_t supp_t1_b = t1.b.support();
-        uint64_t supp_t1_c = t1.c.support();
+        const auto& t1 = tensors[targetIndex];auto t1_orbit = t1.generateOrbit();
+            uint64_t supp_t1_a = t1.a.support();
+            uint64_t supp_t1_b = t1.b.support();
+            uint64_t supp_t1_c = t1.c.support();
+            uint64_t kernel_t1_a = Sym1::get_kernel_mask(Sym2::get_footprint(supp_t1_b), Sym3::get_footprint(supp_t1_c));
+            uint64_t kernel_t1_b = Sym2::get_kernel_mask(Sym1::get_footprint(supp_t1_a), Sym3::get_footprint(supp_t1_c));
+            uint64_t kernel_t1_c = Sym3::get_kernel_mask(Sym1::get_footprint(supp_t1_a), Sym2::get_footprint(supp_t1_b));
+            for (uint16_t i = 0; i < tensors.size(); i++) {
+                if (i == targetIndex) continue;
+                const auto& t2 = tensors[i];
+                uint64_t supp_t2_a = t2.a.support();
+                uint64_t supp_t2_b = t2.b.support();
+                uint64_t supp_t2_c = t2.c.support();
+                uint64_t kernel_t2_a = Sym1::get_kernel_mask(Sym2::get_footprint(supp_t2_b), Sym3::get_footprint(supp_t2_c));
+                uint64_t kernel_t2_b = Sym2::get_kernel_mask(Sym1::get_footprint(supp_t2_a), Sym3::get_footprint(supp_t2_c));
+                uint64_t kernel_t2_c = Sym3::get_kernel_mask(Sym1::get_footprint(supp_t2_a), Sym2::get_footprint(supp_t2_b));
+                bool checkA1 = (((supp_t1_a ^ supp_t2_a) & ~kernel_t1_a) == 0);
+                bool checkA2 = (((supp_t1_a ^ supp_t2_a) & ~kernel_t2_a) == 0);
+                bool checkB1 = (((supp_t1_b ^ supp_t2_b) & ~kernel_t1_b) == 0);
+                bool checkB2 = (((supp_t1_b ^ supp_t2_b) & ~kernel_t2_b) == 0);
+                bool checkC1 = (((supp_t1_c ^ supp_t2_c) & ~kernel_t1_c) == 0);
+                bool checkC2 = (((supp_t1_c ^ supp_t2_c) & ~kernel_t2_c) == 0);
+                if (!checkA1 && !checkA2 && !checkB1 && !checkB2 && !checkC1 && !checkC2) continue;
+                if (checkA1 || checkA2) {
+                    for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
+                        if (checkA1) {
+                            const auto& mapped_t1 = t1_orbit[g];
+                            if (mapped_t1.a.isKernelEqual(t2.a, kernel_t1_a)) {
+                                flipCandidates.push_back({i, targetIndex, 0, g, false});
+                            } else if (mapped_t1.a.isKernelNegEqual(t2.a, kernel_t1_a)) {
+                                flipCandidates.push_back({i, targetIndex, 0, g, true});
+                            }
+                        }
+                        if (checkA2) {
+                            const auto& mapped_t2_a = Sym1::apply(t2.a, g);
+                            if (mapped_t2_a.isKernelEqual(t1.a, kernel_t2_a)) {
+                                flipCandidates.push_back({targetIndex, i, 0, g, false});
+                            } else if (mapped_t2_a.isKernelNegEqual(t1.a, kernel_t2_a)) {
+                                flipCandidates.push_back({targetIndex, i, 0, g, true});
+                            }
+                        }
+                    }
+                }
 
-        for (uint16_t i = 0; i < tensors.size(); i++) {
-            if (i == targetIndex || i == skipIndex) continue;
-            const auto& t2 = tensors[i];
-            bool checkA = (supp_t1_a == t2.a.support());
-            bool checkB = (supp_t1_b == t2.b.support());
-            bool checkC = (supp_t1_c == t2.c.support());
-            if (!checkA && !checkB && !checkC) continue;
-            if (checkA) {
-                for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
-                    const auto& mapped_t1 = t1_orbit[g];
-                    if (mapped_t1.a == t2.a) {
-                        flipCandidates.push_back({i,targetIndex,0,g,false});
-                    } else if (mapped_t1.a.negEqual(t2.a)) {
-                        flipCandidates.push_back({i,targetIndex,0,g,true});
+                if (checkB1 || checkB2) {
+                    for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
+                        if (checkB1) {
+                            const auto& mapped_t1 = t1_orbit[g];
+                            if (mapped_t1.b.isKernelEqual(t2.b, kernel_t1_b)) {
+                                flipCandidates.push_back({i, targetIndex, 1, g, false});
+                            } else if (mapped_t1.b.isKernelNegEqual(t2.b, kernel_t1_b)) {
+                                flipCandidates.push_back({i, targetIndex, 1, g, true});
+                            }
+                        }
+                        if (checkB2) {
+                            const auto& mapped_t2_b = Sym2::apply(t2.b, g);
+                            if (mapped_t2_b.isKernelEqual(t1.b, kernel_t2_b)) {
+                                flipCandidates.push_back({targetIndex, i, 1, g, false});
+                            } else if (mapped_t2_b.isKernelNegEqual(t1.b, kernel_t2_b)) {
+                                flipCandidates.push_back({targetIndex, i, 1, g, true});
+                            }
+                        }
                     }
                 }
-            }if (checkB) {
-                for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
-                    const auto& mapped_t1 = t1_orbit[g];
-                    if (mapped_t1.b == t2.b) {
-                        flipCandidates.push_back({i,targetIndex,1,g,false});
-                    } else if (mapped_t1.b.negEqual(t2.b)) {
-                        flipCandidates.push_back({i,targetIndex,1,g,true});
-                    }
-                }
-            }if (checkC) {
-                for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
-                    const auto& mapped_t1 = t1_orbit[g];
-                    if (mapped_t1.c == t2.c) {
-                        flipCandidates.push_back({i,targetIndex,2,g,false});
-                    } else if (mapped_t1.c.negEqual(t2.c)) {
-                        flipCandidates.push_back({i,targetIndex,2,g,true});
+
+                if (checkC1 || checkC2) {
+                    for (uint8_t g=0; g < Sym1::ORBIT_SIZE; g++) {
+                        if (checkC1) {
+                            const auto& mapped_t1 = t1_orbit[g];
+                            if (mapped_t1.c.isKernelEqual(t2.c, kernel_t1_c)) {
+                                flipCandidates.push_back({i, targetIndex, 2, g, false});
+                            } else if (mapped_t1.c.isKernelNegEqual(t2.c, kernel_t1_c)) {
+                                flipCandidates.push_back({i, targetIndex, 2, g, true});
+                            }
+                        }
+                        if (checkC2) {
+                            const auto& mapped_t2_c = Sym3::apply(t2.c, g);
+                            if (mapped_t2_c.isKernelEqual(t1.c, kernel_t2_c)) {
+                                flipCandidates.push_back({targetIndex, i, 2, g, false});
+                            } else if (mapped_t2_c.isKernelNegEqual(t1.c, kernel_t2_c)) {
+                                flipCandidates.push_back({targetIndex, i, 2, g, true});
+                            }
+                        }
                     }
                 }
             }
         }
-    }
 
     void flip(const FlipCandidate& f, FastRNG& rng) {
-        const bool swap = rng.coinToss();
-        uint16_t idx1 = swap ? f.index2 : f.index1;
-        uint16_t idx2 = swap ? f.index1 : f.index2;
+        uint16_t idx1 = f.index1;
+        uint16_t idx2 = f.index2;
         auto& t1  = tensors[idx1];
         auto& t2 = tensors[idx2];
 
@@ -241,7 +329,7 @@ public:
         return true;
     }
 
-    bool findAndApplyMutatedFlip(FastRNG& rng) {
+    bool findAndApplyHiddenFlip(FastRNG& rng) {
         struct HiddenFlip {
             uint16_t idx1; uint16_t idx2;
             uint8_t axis; uint8_t g;

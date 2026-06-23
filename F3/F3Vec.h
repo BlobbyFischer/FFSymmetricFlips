@@ -55,6 +55,14 @@ public:
         return plus == other.minus && minus == other.plus;
     }
 
+    [[nodiscard]] inline bool isKernelEqual(const F3Vec &other, uint64_t kernel_mask) const { // so that we check not just equality, but also if they are almost equal, and adding the terms in to make it zero doesn't change the orbit because they're in the kernel.
+        return ((*this - other).support() & ~kernel_mask) == 0;
+    }
+
+    [[nodiscard]] inline bool isKernelNegEqual(const F3Vec &other, uint64_t kernel_mask) const {
+        return ((*this + other).support() & ~kernel_mask) == 0;
+    }
+
     bool operator!=(const F3Vec &other) const {
         return plus != other.plus || minus != other.minus;
     }
